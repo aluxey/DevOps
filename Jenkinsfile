@@ -1,12 +1,11 @@
-cat > Jenkinsfile << 'EOF'
 pipeline {
     agent any
 
     environment {
-        SONAR_TOKEN  = credentials('sonar-token')
-        NEXUS_CREDS  = credentials('nexus-creds')
-        NEXUS_URL    = 'http://nexus:8081'
-        NEXUS_REPO   = 'npm-releases'
+        SONAR_TOKEN = credentials('sonar-token')
+        NEXUS_CREDS = credentials('nexus-creds')
+        NEXUS_URL   = 'http://nexus:8081'
+        NEXUS_REPO  = 'npm-releases'
     }
 
     stages {
@@ -61,8 +60,3 @@ pipeline {
         failure { echo '❌ Pipeline FAILED' }
     }
 }
-EOF
-
-git add Jenkinsfile
-git commit -m "fix: Jenkinsfile complet avec tous les stages"
-git push origin main
