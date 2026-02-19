@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        nodejs 'NodeJS-20'
+    }
+
     environment {
         SONAR_TOKEN = credentials('sonar-token')
         NEXUS_CREDS = credentials('nexus-creds')
