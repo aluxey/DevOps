@@ -1,0 +1,7 @@
+credentials-binding
+git
+matrix-auth
+nexus-artifact-uploader
+pipeline-stage-view
+sonar
+workflow-aggregator
