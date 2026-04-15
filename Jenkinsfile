@@ -31,11 +31,11 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    sh '''
+                    sh """
                         npm run sonar -- \
-                          -Dsonar.host.url=${SONAR_HOST_URL} \
-                          -Dsonar.token=$SONAR_TOKEN
-                    '''
+                          -Dsonar.host.url=${params.SONAR_HOST_URL} \
+                          -Dsonar.token=\$SONAR_TOKEN
+                    """
                 }
             }
         }
@@ -57,20 +57,20 @@ pipeline {
         stage('Deploy to Nexus') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'nexus-creds', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
-                    sh '''
+                    sh """
                         set -eu
-                        PACKAGE_FILE=$(ls -1 *.tgz | tail -n 1)
-                        NEXUS_REGISTRY="http://${NEXUS_HOST}/repository/${NEXUS_REPO}/"
-                        NEXUS_AUTH=$(printf "%s:%s" "$NEXUS_USER" "$NEXUS_PASS" | base64 -w 0)
-                        NPM_CONFIG_USERCONFIG="$WORKSPACE/.npmrc"
+                        PACKAGE_FILE=\$(ls -1 *.tgz | tail -n 1)
+                        NEXUS_REGISTRY="http://${params.NEXUS_HOST}/repository/${params.NEXUS_REPO}/"
+                        NEXUS_AUTH=\$(printf "%s:%s" "\$NEXUS_USER" "\$NEXUS_PASS" | base64 -w 0)
+                        NPM_CONFIG_USERCONFIG="\$WORKSPACE/.npmrc"
 
-                        trap 'rm -f "$NPM_CONFIG_USERCONFIG"' EXIT
+                        trap 'rm -f "\$NPM_CONFIG_USERCONFIG"' EXIT
 
-                        npm config set registry "$NEXUS_REGISTRY" --userconfig "$NPM_CONFIG_USERCONFIG"
-                        npm config set "//${NEXUS_HOST}/repository/${NEXUS_REPO}/:_auth" "$NEXUS_AUTH" --userconfig "$NPM_CONFIG_USERCONFIG"
-                        npm config set "//${NEXUS_HOST}/repository/${NEXUS_REPO}/:always-auth" true --userconfig "$NPM_CONFIG_USERCONFIG"
-                        npm publish "$PACKAGE_FILE" --registry "$NEXUS_REGISTRY" --userconfig "$NPM_CONFIG_USERCONFIG"
-                    '''
+                        npm config set registry "\$NEXUS_REGISTRY" --userconfig "\$NPM_CONFIG_USERCONFIG"
+                        npm config set "//${params.NEXUS_HOST}/repository/${params.NEXUS_REPO}/:_auth" "\$NEXUS_AUTH" --userconfig "\$NPM_CONFIG_USERCONFIG"
+                        npm config set "//${params.NEXUS_HOST}/repository/${params.NEXUS_REPO}/:always-auth" true --userconfig "\$NPM_CONFIG_USERCONFIG"
+                        npm publish "\$PACKAGE_FILE" --registry "\$NEXUS_REGISTRY" --userconfig "\$NPM_CONFIG_USERCONFIG"
+                    """
                 }
             }
         }
