@@ -1,15 +1,10 @@
 pipeline {
     agent any
 
-    tools {
-        nodejs 'NodeJS-20'
-    }
-
     environment {
-        SONAR_TOKEN = credentials('sonar-token')
-        NEXUS_CREDS = credentials('nexus-creds')
-        NEXUS_URL   = 'http://nexus:8081'
-        NEXUS_REPO  = 'npm-releases'
+        NEXUS_HOST = 'nexus:8081'
+        NEXUS_REPO = 'npm-releases'
+        SONAR_HOST = 'http://sonarqube:9000'
     }
 
     stages {
@@ -17,6 +12,12 @@ pipeline {
         stage('Install') {
             steps {
                 sh 'npm ci'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'npm run build'
             }
         }
 
@@ -28,16 +29,20 @@ pipeline {
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh 'npx sonar-scanner -Dsonar.projectKey=mon-projet-nodejs -Dsonar.host.url=http://sonarqube:9000 -Dsonar.login=${SONAR_TOKEN}'
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh '''
+                        npm run sonar -- \
+                          -Dsonar.host.url=$SONAR_HOST \
+                          -Dsonar.token=$SONAR_TOKEN
+                    '''
                 }
             }
         }
 
         stage('Quality Gate') {
             steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
+                    sh 'node scripts/wait-for-quality-gate.mjs'
                 }
             }
         }
@@ -50,11 +55,22 @@ pipeline {
 
         stage('Deploy to Nexus') {
             steps {
-                sh """
-                    npm config set registry ${NEXUS_URL}/repository/${NEXUS_REPO}/
-                    npm config set //${NEXUS_URL}/repository/${NEXUS_REPO}/:_auth \$(echo -n ${NEXUS_CREDS_USR}:${NEXUS_CREDS_PSW} | base64)
-                    npm publish *.tgz
-                """
+                withCredentials([usernamePassword(credentialsId: 'nexus-creds', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
+                    sh '''
+                        set -eu
+                        PACKAGE_FILE=$(ls -1 *.tgz | tail -n 1)
+                        NEXUS_REGISTRY="http://${NEXUS_HOST}/repository/${NEXUS_REPO}/"
+                        NEXUS_AUTH=$(printf "%s:%s" "$NEXUS_USER" "$NEXUS_PASS" | base64 -w 0)
+                        NPM_CONFIG_USERCONFIG="$WORKSPACE/.npmrc"
+
+                        trap 'rm -f "$NPM_CONFIG_USERCONFIG"' EXIT
+
+                        npm config set registry "$NEXUS_REGISTRY" --userconfig "$NPM_CONFIG_USERCONFIG"
+                        npm config set "//${NEXUS_HOST}/repository/${NEXUS_REPO}/:_auth" "$NEXUS_AUTH" --userconfig "$NPM_CONFIG_USERCONFIG"
+                        npm config set "//${NEXUS_HOST}/repository/${NEXUS_REPO}/:always-auth" true --userconfig "$NPM_CONFIG_USERCONFIG"
+                        npm publish "$PACKAGE_FILE" --registry "$NEXUS_REGISTRY" --userconfig "$NPM_CONFIG_USERCONFIG"
+                    '''
+                }
             }
         }
     }
