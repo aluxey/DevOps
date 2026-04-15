@@ -1,16 +1,17 @@
 pipeline {
     agent any
 
-    environment {
-        NEXUS_HOST = 'nexus:8081'
-        NEXUS_REPO = 'npm-releases'
-        SONAR_HOST = 'http://sonarqube:9000'
+    parameters {
+        string(name: 'SONAR_HOST_URL', defaultValue: 'http://localhost:9000', description: 'SonarQube URL. Use http://sonarqube:9000 if Jenkins runs in the Docker Compose network.')
+        string(name: 'NEXUS_HOST', defaultValue: 'localhost:8081', description: 'Nexus host:port. Use nexus:8081 if Jenkins runs in the Docker Compose network.')
+        string(name: 'NEXUS_REPO', defaultValue: 'npm-releases', description: 'Nexus npm hosted repository name.')
     }
 
     stages {
 
         stage('Install') {
             steps {
+                echo "Using SonarQube at ${params.SONAR_HOST_URL} and Nexus at ${params.NEXUS_HOST}/${params.NEXUS_REPO}"
                 sh 'npm ci'
             }
         }
@@ -32,7 +33,7 @@ pipeline {
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
                     sh '''
                         npm run sonar -- \
-                          -Dsonar.host.url=$SONAR_HOST \
+                          -Dsonar.host.url=${SONAR_HOST_URL} \
                           -Dsonar.token=$SONAR_TOKEN
                     '''
                 }
