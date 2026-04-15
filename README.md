@@ -64,3 +64,23 @@ npm run build
 npm test
 npm pack
 ```
+
+## Captures de validation
+
+### Jenkins
+
+Pipeline `devops-pipeline` avec un build complet reussi et les etapes `Install -> Build -> Test -> SonarQube Analysis -> Quality Gate -> Package -> Deploy to Nexus`.
+
+![Pipeline Jenkins](docs/screenshots/jenkins-pipeline.png)
+
+### SonarQube
+
+Projet `devops` analyse avec Quality Gate `Passed`, couverture a `100%` et aucune issue critique visible.
+
+![Projet SonarQube](docs/screenshots/sonarqube-project.png)
+
+### Nexus
+
+Artefact `devops-1.0.0.tgz` publie dans le repository `npm-releases`, avec l'URL visible dans la capture.
+
+![Artefact Nexus](docs/screenshots/nexus-artifact.png)
